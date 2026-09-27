@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- SSU GATE CLIENT v1.2 · DanDDee access screen · paste as the FIRST thing inside <head> · edit the 4 CONFIG lines only -->
+<script>
+(function(){
+  var CONFIG = {
+    API:   'https://script.google.com/macros/s/AKfycbyFZ8bxPMeQxKjUKQOmmann5HzBA0YwGipOi3sukw2E3VwGopp-sDYUiYPEcvuDOi0G/exec',          // Apps Script /exec URL (same for every site)
+    HUB:   '../',          // where people land to sign in
+    SITE:  'ssu-start',                         // short name for logs, e.g. ssu-calculators
+    MODE:  'module',                      // 'hub' | 'module' (lives inside hub) | 'standalone'
+    TITLE: 'AAA Smart Security University',   // sign-in card heading
+    ORIGINS: [],                              // hub only: other domains allowed to receive the session
+    VIDEO: '',                                // optional looping clip on the sign-in card
+    SPLASH: '',                               // optional one-time clip after a fresh sign-in
+    DEMO: false                               // PREVIEW BUILD ONLY: no server, anyone can enter
+  };
+  var KEY='ssu.session', IDLE_MS=30*60*1000, d=document, de=d.documentElement;
+  var css='html.ssu-locked body>*:not(#ssu-gate):not(#ssu-splash){display:none!important}'+
+  '#ssu-gate{--bg:#F4F2EC;--card:#FFFFFF;--ink:#1F3864;--mute:#5B6475;--line:#D9DEE6;position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:var(--bg);font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));overflow:auto}'+
+  '@media(prefers-color-scheme:dark){#ssu-gate{--bg:#12203A;--card:#1F3864;--ink:#FFFFFF;--mute:#CFE0FF;--line:#2E4A7A}}'+
+  '#ssu-gate .c{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 12px 34px rgba(18,32,58,.25)}'+
+  '#ssu-gate .hd{background:#1F3864;border-bottom:4px solid #C9A648;padding:18px 20px 14px;text-align:center;color:#fff}'+
+  '#ssu-gate .hd svg{width:84px;height:84px;display:block;margin:0 auto 4px}'+
+  '#ssu-gate .wm{font:700 30px Cambria,Caladea,Georgia,serif;letter-spacing:.5px;color:#fff;line-height:1.1}'+
+  '#ssu-gate .wm b{color:#C9A648}'+
+  '#ssu-gate .tg{font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#CFE0FF;margin-top:4px}'+
+  '#ssu-gate .bd{padding:18px 22px 20px}'+
+  '#ssu-gate h1{font-family:Cambria,Caladea,Georgia,serif;color:var(--ink);font-size:18px;margin:0 0 2px}'+
+  '#ssu-gate p{color:var(--mute);font-size:14px;margin:0 0 12px}'+
+  '#ssu-gate label{display:block;color:var(--ink);font-size:13px;font-weight:700;margin:10px 0 4px}'+
+  '#ssu-gate input,#ssu-gate button{font-family:inherit}#ssu-gate input{width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink)}'+
+  '#ssu-gate input:focus{outline:2px solid #C9A648;outline-offset:1px}'+
+  '#ssu-gate button{width:100%;margin-top:16px;padding:13px;font-size:16px;font-weight:700;border:1px solid #CC0000;border-radius:10px;background:#1F3864;color:#fff;cursor:pointer}'+
+  '@media(prefers-color-scheme:dark){#ssu-gate button{background:#C9A648;color:#1F3864;border-color:#C9A648}}'+
+'#ssu-gate .v{display:block;width:100%;max-height:120px;object-fit:contain;border-radius:8px;margin:-6px 0 12px;background:transparent}'+
+  '#ssu-splash{position:fixed;inset:0;z-index:2147483647;background:#12203A;display:flex;align-items:center;justify-content:center;flex-direction:column}'+
+  '#ssu-splash video{max-width:92vw;max-height:78vh;border-radius:12px}'+
+  '#ssu-splash button{margin-top:14px;background:transparent;color:#C9A648;border:1px solid #C9A648;border-radius:999px;padding:8px 18px;font:700 14px Calibri,Carlito,Arial,sans-serif}'+
+  '#ssu-gate .pv{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}#ssu-gate .pvb{font-size:11px;font-weight:700;letter-spacing:1px;color:#CC0000;text-align:center;margin-bottom:4px}'+
+  '#ssu-gate select{width:100%;font:16px inherit;font-family:inherit;padding:11px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink)}'+
+  '#ssu-gate #ssu-pv{background:transparent;color:var(--ink);border:1px solid #C9A648;margin-top:10px}'+
+  '#ssu-gate .e{color:#CC0000;font-size:14px;min-height:20px;margin-top:10px}'+
+  '#ssu-gate .f{color:var(--mute);font-size:12px;margin-top:14px;text-align:center}'+
+  '#ssu-lock{position:fixed;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));z-index:2147483645;background:#1F3864;color:#fff;border:1px solid #C9A648;border-radius:999px;padding:6px 12px;font:700 12px Calibri,Carlito,Arial,sans-serif;cursor:pointer;opacity:.9}';
+  var MEM=null;
+  function S(){try{var x=JSON.parse(localStorage.getItem(KEY)||'null');return x||MEM}catch(e){return MEM}}
+  function W(v){MEM=v||null;try{v?localStorage.setItem(KEY,JSON.stringify(v)):localStorage.removeItem(KEY)}catch(e){}}
+  function post(body){body.site=CONFIG.SITE;
+    if(CONFIG.DEMO){var cur=S();return Promise.resolve(body.action==='login'?{ok:false,code:'AUTH-DEMO',msg:'Preview build: tap Enter preview below.'}:
+      body.action==='verify'?(body.token==='demo'?{ok:true,user:(cur&&cur.token==='demo'?cur.user:{email:'preview@demo',role:'Owner',sites:'ALL'}),exp:Date.now()+43200000}:{ok:false,code:'AUTH-02'}):{ok:true})}return fetch(CONFIG.API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(function(r){return r.json()})}
+  function valid(s){return s&&s.token&&s.exp>Date.now()&&(Date.now()-(s.last||0))<IDLE_MS}
+  var st=d.createElement('style');st.textContent=css;(d.head||de).appendChild(st);
+  de.classList.add('ssu-locked');
+  function allowed(u){var x=String(u&&u.sites||'ALL').toUpperCase();return x==='ALL'||x.split(/[\s,;]+/).indexOf(CONFIG.SITE.toUpperCase())>-1}
+  function tier(){var r=String((S()||{}).user&&S().user.role||'').toLowerCase();
+    if(/^(owner|admin|trainer|developer)$/.test(r))return 'admin';if(/(admin-ltd|manager|lead|dealer|compliance|coordinat|executive)/.test(r))return 'manager';return 'tech'}
+  function unlock(s){
+    if(!allowed(s.user)){gate('Your account does not include this site. Ask your SSU admin. [AUTH-07]');return}
+    de.classList.remove('ssu-locked');var g=d.getElementById('ssu-gate');if(g)g.remove();
+    if(!d.getElementById('ssu-lock')&&(CONFIG.MODE!=='module'||window.top===window.self)){var l=d.createElement('button');l.id='ssu-lock';l.type='button';
+      l.textContent='\uD83D\uDD12 '+(s.user&&s.user.role||'Signed in');l.title='Tap to sign out';
+      l.onclick=function(){if(confirm('Sign out of every SSU site on this device?'))out()};d.body.appendChild(l)}
+    try{window.dispatchEvent(new CustomEvent('ssu:ready',{detail:s.user}))}catch(e){}
+  }
+  function out(){W(null);location.reload()}
+  function splash(done){
+    if(!CONFIG.SPLASH){done();return}
+    var o=d.createElement('div');o.id='ssu-splash';
+    o.innerHTML='<video src="'+CONFIG.SPLASH+'" autoplay muted playsinline></video><button type="button">Skip</button>';
+    d.body.appendChild(o);var fin=false,end=function(){if(fin)return;fin=true;o.remove();done()};
+    var v=o.querySelector('video');v.onended=end;v.onerror=end;o.querySelector('button').onclick=end;setTimeout(end,9000);
+  }
+  function gate(msg){
+    if(CONFIG.MODE==='module'&&window.top===window.self&&!CONFIG.DEMO){location.replace(CONFIG.HUB);return}
+    if(CONFIG.MODE==='module'&&!msg){try{window.parent.postMessage({type:'ssu-need'},'*')}catch(e){}}
+    if(d.getElementById('ssu-gate'))return;
+    var g=d.createElement('div');g.id='ssu-gate';
+    g.innerHTML='<div class="c"><div class="hd"><svg viewBox="0 0 256 256" role="img" aria-label="DanDDee"><line x1=\'127.00\' y1=\'142.00\' x2=\'162.00\' y2=\'142.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(162.00 142.00) rotate(90.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'124.99\' y1=\'149.50\' x2=\'155.30\' y2=\'167.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(155.30 167.00) rotate(120.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'119.50\' y1=\'154.99\' x2=\'137.00\' y2=\'185.30\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(137.00 185.30) rotate(150.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'112.00\' y1=\'157.00\' x2=\'112.00\' y2=\'192.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(112.00 192.00) rotate(180.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'104.50\' y1=\'154.99\' x2=\'87.00\' y2=\'185.30\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(87.00 185.30) rotate(210.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'99.01\' y1=\'149.50\' x2=\'68.70\' y2=\'167.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(68.70 167.00) rotate(240.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'97.00\' y1=\'142.00\' x2=\'62.00\' y2=\'142.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(62.00 142.00) rotate(270.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'99.01\' y1=\'134.50\' x2=\'68.70\' y2=\'117.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(68.70 117.00) rotate(300.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'104.50\' y1=\'129.01\' x2=\'87.00\' y2=\'98.70\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(87.00 98.70) rotate(330.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><line x1=\'112.00\' y1=\'127.00\' x2=\'112.00\' y2=\'92.00\' stroke=\'#FFFFFF\' stroke-width=\'7\' stroke-linecap=\'round\'/><g transform=\'translate(112.00 92.00) rotate(360.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#C9A648\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><circle cx=\'112\' cy=\'142\' r=\'13\' fill=\'#FFFFFF\'/><g transform=\'translate(190.00 88.00) rotate(142.00) scale(0.85)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#CC0000\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g><g transform=\'translate(226.00 56.00) rotate(142.00) scale(0.70)\'><path d=\'M0 0 c -7.6 -8.6 -11.2 -13.6 -11.2 -19.4 a11.2 11.2 0 0 1 22.4 0 c 0 5.8 -3.6 10.8 -11.2 19.4 z\' fill=\'#CC0000\'/><circle cx=\'0\' cy=\'-20\' r=\'4.2\' fill=\'#ffffff\' opacity=\'0.92\'/></g></svg>'+
+    '<div class="wm">Dan<b>DD</b>ee</div><div class="tg">Access \u00b7 AAA Smart Security</div></div><div class="bd">'+
+    (CONFIG.VIDEO?'<video class="v" src="'+CONFIG.VIDEO+'" muted autoplay loop playsinline aria-hidden="true" onerror="this.remove()"></video>':'')+
+    '<h1>'+CONFIG.TITLE+'</h1><p>Sign in once. Every site opens from here.</p>'+
+    '<label for="ssu-e">Work email</label><input id="ssu-e" type="email" autocomplete="username" inputmode="email">'+
+    '<label for="ssu-p">Password</label><input id="ssu-p" type="password" autocomplete="current-password">'+
+    '<button id="ssu-b" type="button">Sign in</button><div class="e" id="ssu-m">'+(msg||'')+'</div>'+
+    '<div class="f">No account or locked out? Contact your SSU admin. Accounts are issued, not self-created.</div></div></div>';
+    if(CONFIG.DEMO){var pv=d.createElement('div');pv.className='pv';
+      pv.innerHTML='<div class="pvb">PREVIEW BUILD \u00b7 no server connected \u00b7 not for field use</div><label for="ssu-r">Preview as</label><select id="ssu-r">'+
+        ['Owner','Admin','Developer','Tech','Coordinator','Concierge','Sales','Dealer'].map(function(r){return '<option>'+r+'</option>'}).join('')+'</select><button id="ssu-pv" type="button">Enter preview</button>';
+      g.querySelector('.bd').insertBefore(pv,g.querySelector('.f'));}
+    d.body.appendChild(g);
+    if(CONFIG.DEMO)d.getElementById('ssu-pv').onclick=function(){var role=d.getElementById('ssu-r').value;var s={token:'demo',user:{email:'preview@demo',role:role,sites:'ALL'},exp:Date.now()+43200000,last:Date.now()};W(s);splash(function(){unlock(s)})};
+    var go=function(){var b=d.getElementById('ssu-b'),m=d.getElementById('ssu-m');b.disabled=true;b.textContent='Checking\u2026';m.textContent='';
+      post({action:'login',email:d.getElementById('ssu-e').value,password:d.getElementById('ssu-p').value}).then(function(r){
+        if(r.ok){var s={token:r.token,user:r.user,exp:r.exp,last:Date.now()};W(s);splash(function(){unlock(s)})}
+        else{m.textContent=(r.msg||'Sign-in failed.')+' ['+(r.code||'AUTH')+']';b.disabled=false;b.textContent='Sign in'}
+      }).catch(function(){m.textContent='No connection. First sign-in needs signal. [AUTH-09]';b.disabled=false;b.textContent='Sign in'})};
+    d.getElementById('ssu-b').onclick=go;d.getElementById('ssu-p').onkeydown=function(e){if(e.key==='Enter')go()};
+  }
+  function boot(){
+    var s=S();
+    if(valid(s)){s.last=Date.now();W(s);unlock(s);
+      post({action:'verify',token:s.token}).then(function(r){if(!r.ok&&r.code!=='AUTH-00'){W(null);de.classList.add('ssu-locked');gate(r.msg||'Please sign in again.')}}).catch(function(){/* offline: keep session until expiry */});
+    } else {W(null);gate(s&&s.exp<Date.now()?'Session expired. Sign in again.':'')}
+  }
+  window.addEventListener('message',function(ev){var m=ev.data||{};
+    if(m.type==='ssu-need'&&CONFIG.MODE==='hub'){var s=S();var ok=ev.origin===location.origin||CONFIG.ORIGINS.indexOf(ev.origin)>-1;
+      if(ok&&valid(s)&&ev.source)ev.source.postMessage({type:'ssu-token',token:s.token,user:s.user,exp:s.exp},ev.origin)}
+    if(m.type==='ssu-token'&&CONFIG.MODE==='module'&&m.token&&de.classList.contains('ssu-locked')){
+      post({action:'verify',token:m.token}).then(function(r){if(r.ok){var s={token:m.token,user:r.user,exp:r.exp,last:Date.now()};W(s);unlock(s)}}).catch(function(){})}
+  });
+  var t=0;['click','keydown','touchstart','scroll'].forEach(function(ev){d.addEventListener(ev,function(){var n=Date.now();if(n-t>60000){t=n;var s=S();if(s){s.last=n;W(s)}}},{passive:true})});
+  setInterval(function(){var s=S();if(!de.classList.contains('ssu-locked')&&!valid(s))out()},60000);
+  window.SSUGate={
+    user:function(){var s=S();return s&&s.user},
+    token:function(){var s=S();return s&&s.token},
+    signOut:out,
+    tier:tier,
+    onReady:function(fn){var run=function(){var s=S();if(valid(s))setTimeout(function(){try{fn(s.user)}catch(e){}},30)};
+      if(d.readyState==='complete'&&!de.classList.contains('ssu-locked'))run();
+      window.addEventListener('ssu:ready',function(){if(d.readyState==='complete')run();else window.addEventListener('load',run,{once:true})})},
+    log:function(event,detail){var s=S();if(s)return post({action:'log',token:s.token,event:event,detail:detail}).catch(function(){})},
+    request:function(item){var s=S();if(s)return post({action:'request',token:s.token,item:item})},
+    result:function(item,score,pass,detail){var s=S();if(s)return post({action:'result',token:s.token,item:item,score:score,pass:pass,detail:detail})}
+  };
+  if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+<!-- /SSU GATE CLIENT -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Start Here · SSU Onboarding to Training</title>
+<style>
+:root{--bg:#F5F6F8;--card:#fff;--ink:#0B1F3A;--mute:#5B6475;--line:#D9DEE6;--tint:#EEF1F6;--ok:#1E7B4B;--gold:#C8A951;--red:#CC0000;--navy:#0B1F3A}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#07111F;--card:#0F1D33;--ink:#EEF2F8;--mute:#A9B3C4;--line:#24344F;--tint:#13243F;--ok:#4FC98A}}
+:root[data-theme="dark"]{--bg:#07111F;--card:#0F1D33;--ink:#EEF2F8;--mute:#A9B3C4;--line:#24344F;--tint:#13243F;--ok:#4FC98A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Calibri,Carlito,"Segoe UI",Arial,sans-serif}
+body{padding:max(12px,env(safe-area-inset-top)) 12px calc(64px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:Cambria,Caladea,Georgia,serif;margin:0}
+.wrap{max-width:860px;margin:0 auto}
+header{background:var(--navy);color:#fff;border-radius:14px;padding:16px 18px;border-bottom:4px solid var(--gold)}
+header h1{font-size:22px}header .sub{opacity:.85;font-size:14px;margin-top:2px}
+.bar{height:10px;background:rgba(255,255,255,.18);border-radius:99px;margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .4s}
+.pct{font-size:13px;margin-top:6px;opacity:.9}
+.tabs{display:flex;gap:6px;margin:14px 0 10px;overflow-x:auto}
+.tabs button,.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 14px;font:700 14px inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"],.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+@media(prefers-color-scheme:dark){.tabs button[aria-selected="true"],.chip.on{background:var(--gold);color:#0B1F3A;border-color:var(--gold)}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.phase{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+.phase>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;font-family:Cambria,Caladea,Georgia,serif;font-weight:700;font-size:17px}
+.phase>summary::-webkit-details-marker{display:none}
+.phase .cnt{font:700 13px Calibri,Carlito,Arial,sans-serif;color:var(--mute)}
+.item{display:grid;grid-template-columns:34px 1fr;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.item.done .t{text-decoration:line-through;color:var(--mute)}
+.item input[type=checkbox]{width:24px;height:24px;margin:2px 0 0;accent-color:var(--ok)}
+.t{font-weight:700}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--tint);color:var(--ink);border-radius:8px;padding:6px 10px;font:700 13px inherit;font-family:inherit;text-decoration:none;cursor:pointer}
+.btn.pri{background:var(--navy);color:#fff;border-color:var(--navy)}
+@media(prefers-color-scheme:dark){.btn.pri{background:var(--gold);color:#0B1F3A;border-color:var(--gold)}}
+.tipw{position:relative;display:inline-block}
+.tipb{border:0;background:none;color:var(--mute);font-size:18px;cursor:help;padding:0 4px;vertical-align:middle}
+.tip{display:none;position:absolute;left:0;top:26px;z-index:20;width:min(300px,78vw);background:var(--navy);color:#fff;border-left:4px solid var(--gold);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:400;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.tipw:hover .tip,.tipw.open .tip{display:block}
+@media(max-width:640px){.tip{position:fixed;left:12px;right:12px;top:auto;bottom:calc(72px + env(safe-area-inset-bottom));width:auto;font-size:15px;z-index:60}}
+.tag{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--mute);text-transform:uppercase}
+.trainer{color:var(--red)}
+.modal{position:fixed;inset:0;background:rgba(7,17,31,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.on{display:flex}
+.mbox{background:var(--card);color:var(--ink);max-width:520px;width:100%;border-radius:14px;border-top:4px solid var(--gold);padding:18px;max-height:88vh;overflow:auto}
+.mbox video{width:100%;border-radius:10px;background:#000;margin:8px 0}
+.mbox ol{padding-left:22px}.mbox li{margin:6px 0}
+.close{float:right}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
+th{background:var(--navy);color:#fff;text-align:left;padding:8px;font-size:13px}
+td{border-top:1px solid var(--line);padding:8px;font-size:14px;vertical-align:top}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+input[type=search]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+.hidden{display:none!important}
+.theme{position:fixed;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:40}
+code{background:var(--tint);padding:1px 5px;border-radius:4px}
+@media print{.acts,.tabs,.theme,.chips{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Start Here · Onboarding to Training</h1>
+  <div class="sub" id="who">AAA Smart Security University</div>
+  <div class="bar"><i id="barFill"></i></div>
+  <div class="pct" id="pct">0% of your track complete</div>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="list">Checklist</button>
+  <button role="tab" aria-selected="false" data-tab="reg">Site Registry</button>
+  <button role="tab" aria-selected="false" data-tab="how">How This Works</button>
+</div>
+
+<section id="list">
+  <div class="chips" id="trackChips"></div>
+  <div id="phases"></div>
+</section>
+
+<section id="reg" class="hidden">
+  <input type="search" id="q" placeholder="Search sites by name, ID or what it does">
+  <div class="chips" id="catChips"></div>
+  <div class="tw"><table><thead><tr><th>Site</th><th>Who</th><th>What it is for</th><th></th></tr></thead><tbody id="regBody"></tbody></table></div>
+  <p class="tag" style="margin-top:10px">Site IDs go in the Sites column of ACCOUNTS. ALL = every site.</p>
+</section>
+
+<section id="how" class="hidden">
+  <div class="card"><h3>Check it off</h3><p>Tap the box when an item is done. Your progress saves on this device and reports to the SSU admin.</p></div>
+  <div class="card"><h3>ⓘ = quick explanation</h3><p>Hover on a computer or tap on a phone to see what the item is and why it matters.</p></div>
+  <div class="card"><h3>Demo = steps plus video</h3><p>Opens the exact steps. Items with a clip play it right there.</p></div>
+  <div class="card"><h3>Open = go do it</h3><p>Opens the site or Hub section. Use Back to return here.</p></div>
+  <div class="card"><h3>Trainer items</h3><p>Items marked <span class="trainer">Trainer signs off</span> need your trainer present. Tap Request sign-off; the admin sees the request.</p></div>
+  <div class="card"><h3>Missing a site?</h3><p>Open Site Registry and tap Request access. The admin gets an email and adds it to your account.</p></div>
+</section>
+</div>
+
+<button class="btn theme" id="themeBtn" type="button" aria-label="Switch light or dark">◐ Theme</button>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="mbox">
+    <button class="btn close" id="mClose" type="button">Close</button>
+    <h3 id="mTitle"></h3>
+    <div id="mVid"></div>
+    <ol id="mSteps"></ol>
+    <div class="acts" id="mActs"></div>
+  </div>
+</div>
+
+<script>
+var SITES=[{"id": "ssu-hub", "n": "SSU Hub", "f": "", "c": "Front door", "a": "All", "w": "Single sign-in and home for every SSU tool"}, {"id": "ssu-training", "n": "SSU Master Training Portal", "f": "training", "c": "Training", "a": "All", "w": "Curriculum, practice tests, study guides by department"}, {"id": "ssu-c2g", "n": "C2G and Empathy Platform", "f": "c2g", "c": "Training", "a": "All", "w": "Cradle to Grave (C2G) drills and member empathy"}, {"id": "ssu-sales", "n": "Sales Training Portal", "f": "sales", "c": "Training", "a": "Rep, Dealer", "w": "Ten sales modules, drills, manager panel"}, {"id": "ssu-fieldops", "n": "Field Ops Training Portal", "f": "fieldops", "c": "Training", "a": "Tech", "w": "Field ops tracks, walkthroughs, flashcards"}, {"id": "ssu-leveling", "n": "Tech Leveling Portal", "f": "leveling", "c": "Training", "a": "Tech", "w": "Level-by-level technician progression"}, {"id": "ssu-ladder", "n": "SSU Tech Ladder and Question Bank", "f": "ladder", "c": "Training", "a": "Tech", "w": "Ladder rungs, tool bag, full question bank"}, {"id": "ssu-ascr4", "n": "ASCR4 Sprinkler Certificate Prep", "f": "ascr4", "c": "Training", "a": "Tech (optional)", "w": "Sprinkler business certificate exam prep"}, {"id": "ssu-sheets", "n": "Spreadsheet Mastery Academy", "f": "sheets", "c": "Training", "a": "Coordinator, Executive", "w": "Excel and Google Sheets by level"}, {"id": "ssu-excel", "n": "Excel Mastery Academy", "f": "excel", "c": "Training", "a": "Coordinator, Executive", "w": "Excel deep dive, Power BI at advanced level"}, {"id": "ssu-account-walkthrough", "n": "Account Creation Walkthrough", "f": "walkthrough", "c": "Training", "a": "Coordinator, Central Station", "w": "Narrated account-creation walkthrough"}, {"id": "ssu-leadership", "n": "Inclusive Leadership Portal", "f": "leadership", "c": "Leadership", "a": "Executive, Admin", "w": "Ten inclusive leadership behaviors, 12-week plan"}, {"id": "ssu-calculators", "n": "Field Calculators", "f": "calculators", "c": "Tools", "a": "Tech", "w": "Voltage drop, battery, wire and stage calculators"}, {"id": "ssu-procard", "n": "Field Pro Card System", "f": "procard", "c": "Tools", "a": "Tech", "w": "Field pro trading cards and directory"}, {"id": "ssu-teammate", "n": "Teammate AI", "f": "teammate", "c": "Tools", "a": "All", "w": "Knowledge search and escalation"}, {"id": "dd-intake", "n": "Commercial Sales Intake", "f": "intake", "c": "Tools", "a": "Rep, Dealer", "w": "Five-step commercial walk, scope flags, signature page"}, {"id": "dd-home", "n": "DanDDee Home Consultation", "f": "home", "c": "Tools", "a": "Rep, Dealer", "w": "Residential walk and package builder"}, {"id": "ssu-licensing", "n": "State Licensing Portal", "f": "licensing", "c": "Compliance", "a": "All", "w": "State-by-state alarm, electrical, fire licensing"}, {"id": "ssu-ucst", "n": "UCST Command Center", "f": "ucst", "c": "Operations", "a": "Coordinator, Executive", "w": "Pilot command center, templates, QA walk-through"}, {"id": "a3-sedona", "n": "Sedona Migration Command Center", "f": "sedona", "c": "Operations", "a": "Coordinator, Executive", "w": "Migration jobs, tickets, billing actions"}, {"id": "ssu-leads", "n": "Lead Command Center", "f": "leads", "c": "Pipeline", "a": "Executive, Admin", "w": "MLS, land development, RFPs, hearings"}, {"id": "mls-leads", "n": "MLS Lead Command Center", "f": "mls", "c": "Pipeline", "a": "Executive, Admin", "w": "Franchise and MLS intelligence"}, {"id": "mwg-intel", "n": "MWG Real Intelligence Command Center", "f": "intel", "c": "Pipeline", "a": "Executive, Admin", "w": "Verified commercial leads and permit sources"}, {"id": "hoa-outreach", "n": "HOA Outreach Command Center", "f": "hoa", "c": "Pipeline", "a": "Coordinator, Executive", "w": "HOA outreach list and tracking"}, {"id": "travel", "n": "Global Travel Discovery", "f": "(own repo)", "c": "External", "a": "Owner only", "w": "External site; same accounts, limit with Sites column"}];
+var PHASES=[{"p": "Day 0 \u00b7 Access", "items": [{"id": "acct", "t": "Receive your SSU account", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Accounts are issued by the SSU admin. There is no sign-up page. You get your work email and a password by voice or in person.", "steps": ["Confirm your work email with your manager.", "Wait for the admin to create your account.", "Get your password by phone or in person, never in the same message as your email."], "video": "ssu-gate-logo.mp4"}, {"id": "signin", "t": "Sign in to the SSU Hub", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "One sign-in opens every SSU site for 12 hours. After 30 minutes idle you are signed out.", "steps": ["Open the SSU Hub link.", "Enter work email and password. Tap Sign in.", "Watch for the LOCK chip bottom-left. Tap it to sign out on a shared device."], "video": "ssu-welcome-shield.mp4", "hub": ""}, {"id": "homescreen", "t": "Add the Hub to your phone home screen", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Makes the Hub one tap away in the field.", "steps": ["iPhone: Safari \u203a Share \u203a Add to Home Screen.", "Android: Chrome \u203a three dots \u203a Add to Home screen.", "Open it once with signal so it works on one bar later."]}, {"id": "okta", "t": "Sign in to Salesforce through Okta", "tr": ["tech", "rep", "coord", "cs", "exec"], "tip": "Salesforce uses its own Okta sign-in. The Hub never stores that password.", "steps": ["Open the Okta tile or app.", "Sign in with your Okta credentials and approve the push.", "Open Salesforce Field Service from Okta."], "hub": "videos"}]}, {"p": "Onboarding", "items": [{"id": "paperwork", "t": "Complete onboarding paperwork", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Profile, acknowledgments and the dealer packet live in the Onboarding module. Modules open in any order.", "steps": ["Open Onboarding in the Hub.", "Save your profile.", "Finish each paperwork item and submit."], "hub": "onboarding"}, {"id": "rules", "t": "Read the standing rules", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "No member personal information in any tool. Dealers by DLR number only. Code, permit and licensing questions go to Compliance. Contract language goes to legal review.", "steps": ["Open README in the Hub.", "Read the standing rules card.", "Check this box to confirm you understand."], "hub": "readme", "video": "true-north-spin.mp4"}, {"id": "wellbeing", "t": "Learn the member-first opener", "tr": ["tech", "rep", "dealer", "cs", "coord"], "tip": "Every member call starts with wellbeing: Are you safe? Are you in a secure location? Is everything okay? Never open with billing.", "steps": ["Open Sales Empathy in the Hub.", "Practice the three wellbeing questions out loud.", "Use them before any account or billing talk."], "hub": "sales"}, {"id": "dlr", "t": "Confirm your DLR number and dealer packet", "tr": ["dealer"], "tip": "Dealers are tracked by DLR number only. One account per DLR number.", "steps": ["Confirm your DLR number with the admin.", "Download the dealer packet from Onboarding.", "Return signed pages through Onboarding."], "hub": "onboarding"}]}, {"p": "Safety", "items": [{"id": "ladder", "t": "Ladder safety module", "tr": ["tech"], "tip": "Required before any install or service work at height.", "steps": ["Open Field Ops Training.", "Complete the ladder safety module.", "Pass the check at 80% or better."], "site": "ssu-fieldops"}, {"id": "loto", "t": "Lockout/tagout (LOTO)", "tr": ["tech"], "tip": "Required before working on any powered equipment. Watch the LOTO video in the Video Library.", "steps": ["Open the Video Library in the Hub.", "Watch the lockout-tagout video.", "Complete the LOTO check in Field Ops Training."], "hub": "videos"}]}, {"p": "Platform tools", "items": [{"id": "teammate", "t": "Try Teammate AI", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Search the knowledge base first. Escalate if stuck. Code, permit and licensing questions are routed to Compliance, not answered.", "steps": ["Open Teammate AI.", "Search one real question from your last job.", "Use Escalate if the answer is not there."], "site": "ssu-teammate"}, {"id": "calcs", "t": "Field Calculators", "tr": ["tech"], "tip": "Voltage drop, battery standby and wire sizing. Your stage access follows your role.", "steps": ["Open Field Calculators.", "Run one battery standby calculation.", "Save or screenshot the result for your trainer."], "site": "ssu-calculators"}, {"id": "intake", "t": "Commercial Sales Intake walk", "tr": ["rep", "dealer"], "tip": "Five-step commercial walk with scope flags and a customer signature page.", "steps": ["Open Commercial Sales Intake.", "Run a practice walk on a test site.", "Generate the handoff PDF."], "site": "dd-intake"}, {"id": "home", "t": "Home Consultation walk", "tr": ["rep", "dealer"], "tip": "Residential walk and package builder. Do not type member names or addresses.", "steps": ["Open DanDDee Home Consultation.", "Walk a practice home room by room.", "Build Essential, Enhanced and Complete options."], "site": "dd-home", "video": "home-perimeter-demo.mp4"}, {"id": "procard", "t": "Field Pro Card", "tr": ["tech"], "tip": "Your field pro card and team directory.", "steps": ["Open Field Pro Card System.", "Review your card.", "Find your team lead in the directory."], "site": "ssu-procard"}, {"id": "lic", "t": "Know where licensing answers live", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Look up state requirements, then route any licensing question to Compliance. The portal is reference, not approval.", "steps": ["Open State Licensing Portal.", "Find your state.", "Send any question to Compliance."], "site": "ssu-licensing"}, {"id": "acctwalk", "t": "Account Creation Walkthrough", "tr": ["coord", "cs"], "tip": "Narrated step-by-step for creating accounts correctly the first time.", "steps": ["Open Account Creation Walkthrough.", "Watch it end to end.", "Create one practice account with your trainer."], "site": "ssu-account-walkthrough"}, {"id": "ops", "t": "Operations command centers", "tr": ["coord", "exec"], "tip": "UCST and Sedona Migration boards. Coordinators update, executives review.", "steps": ["Open UCST Command Center.", "Open Sedona Migration Command Center.", "Find your open action items."], "site": "ssu-ucst"}]}, {"p": "Training", "items": [{"id": "master", "t": "SSU Master Training Portal", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Your department curriculum, practice tests and study guides.", "steps": ["Open SSU Master Training Portal.", "Pick your role and region.", "Start your first practice test."], "site": "ssu-training"}, {"id": "c2g", "t": "C2G and Empathy drills", "tr": ["tech", "rep", "dealer", "cs", "coord"], "tip": "Cradle to Grave (C2G) drills plus member empathy practice.", "steps": ["Open C2G and Empathy Platform.", "Pick your role.", "Complete one category drill."], "site": "ssu-c2g"}, {"id": "sales", "t": "Sales Training Portal", "tr": ["rep", "dealer"], "tip": "Ten modules and objection drills.", "steps": ["Open Sales Training Portal.", "Pick your sales role.", "Finish Module 1 and one drill."], "site": "ssu-sales"}, {"id": "leveling", "t": "Tech Leveling", "tr": ["tech"], "tip": "Level-by-level progression. Your trainer signs off each level.", "steps": ["Open Tech Leveling Portal.", "Review Level 1 requirements.", "Book your Level 1 sign-off."], "site": "ssu-leveling"}, {"id": "ladder2", "t": "Tech Ladder and Question Bank", "tr": ["tech"], "tip": "Climb the rungs and study the full bank by track.", "steps": ["Open SSU Tech Ladder and Question Bank.", "Find your rung.", "Run a 20-question practice set."], "site": "ssu-ladder"}, {"id": "sheets", "t": "Spreadsheet Mastery", "tr": ["coord", "exec"], "tip": "Excel and Google Sheets by level.", "steps": ["Open Spreadsheet Mastery Academy.", "Pick your level.", "Finish the first lesson."], "site": "ssu-sheets"}, {"id": "leader", "t": "Inclusive Leadership", "tr": ["exec"], "tip": "Ten behaviors and a 12-week plan.", "steps": ["Open Inclusive Leadership Portal.", "Take the self-assessment.", "Pick one behavior for this month."], "site": "ssu-leadership"}]}, {"p": "Certification", "items": [{"id": "assess", "t": "Pass your assessments at 80%", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "Scores report to the admin automatically. Below 80% shows as NOT YET; retake after review.", "steps": ["Open Assessment in the Hub.", "Complete your role assessment.", "Retake after review if NOT YET."], "hub": "assessment"}, {"id": "ride", "t": "Ride-along sign-off", "tr": ["tech", "rep"], "tip": "Your trainer confirms in person. You get the complete process, not just what one ride-along covered.", "steps": ["Schedule the ride-along with your trainer.", "Complete the checklist items with the trainer present.", "Trainer confirms; tap Request sign-off."], "trainer": true}, {"id": "done", "t": "Onboarding to training complete", "tr": ["tech", "rep", "dealer", "coord", "cs", "exec"], "tip": "When every item in your track is checked, a completion report goes to the admin.", "steps": ["Check every item in your track.", "Watch the completion clip.", "Keep going: new content lands in the Hub."], "video": "true-north-gsd.mp4"}]}];
+var ROLE_TRACK={"tech": "tech", "rep": "rep", "sales": "rep", "dealer": "dealer", "coordinator": "coord", "concierge": "cs", "central station": "cs", "executive": "exec"};
+var LB="../";
+var TRACK_NAMES={tech:'Technician',rep:'Sales Rep',dealer:'Dealer',coord:'Coordinator',cs:'Concierge / Central Station',exec:'Executive',all:'Everything'};
+var d=document,$=function(s){return d.querySelector(s)};
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var FOLDER={};SITES.forEach(function(s){FOLDER[s.id]=s.f});
+var user=null,track='all',state={},KEY='ssu.start.anon';
+function load(){try{state=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){state={}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function G(){return window.SSUGate||null}
+function mine(it){return track==='all'||it.tr.indexOf(track)>-1}
+function link(it){if(it.site&&FOLDER[it.site]!=null&&FOLDER[it.site].indexOf('(')<0)return LB+FOLDER[it.site]+'/';if(it.hub!=null)return LB+'#/'+it.hub;return ''}
+function render(){
+  var html='',tot=0,dn=0;
+  PHASES.forEach(function(ph,pi){
+    var items=ph.items.filter(mine);if(!items.length)return;
+    var pd=items.filter(function(i){return state[i.id]}).length;tot+=items.length;dn+=pd;
+    html+='<details class="phase"'+(pd<items.length?' open':'')+'><summary><span>'+esc(ph.p)+'</span><span class="cnt">'+pd+' / '+items.length+'</span></summary>';
+    items.forEach(function(it){
+      var L=link(it),on=!!state[it.id];
+      html+='<div class="item'+(on?' done':'')+'"><input type="checkbox" data-id="'+it.id+'" aria-label="'+esc(it.t)+'"'+(on?' checked':'')+'>'+
+      '<div><span class="t">'+esc(it.t)+'</span><span class="tipw"><button class="tipb" type="button" aria-label="What is this?">ⓘ</button><span class="tip" role="tooltip">'+esc(it.tip)+'</span></span>'+
+      (it.trainer?'<div class="tag trainer">Trainer signs off</div>':'')+
+      '<div class="acts"><button class="btn" type="button" data-demo="'+it.id+'">▶ Demo</button>'+
+      (L?'<a class="btn pri" target="_top" href="'+L+'">Open ›</a>':'')+
+      (it.trainer?'<button class="btn" type="button" data-req="'+it.id+'">Request sign-off</button>':'')+'</div></div></div>';
+    });
+    html+='</details>';
+  });
+  $('#phases').innerHTML=html;
+  var p=tot?Math.round(dn/tot*100):0;$('#barFill').style.width=p+'%';$('#pct').textContent=p+'% of your track complete · '+dn+' of '+tot+' items';
+  return {tot:tot,dn:dn};
+}
+function find(id){var r=null;PHASES.forEach(function(ph){ph.items.forEach(function(i){if(i.id===id)r=i})});return r}
+function phaseOf(id){var r=null;PHASES.forEach(function(ph){ph.items.forEach(function(i){if(i.id===id)r=ph})});return r}
+function demo(id){
+  var it=find(id);$('#mTitle').textContent=it.t;
+  $('#mVid').innerHTML=it.video?'<video src="'+LB+'videos/'+esc(it.video)+'" controls playsinline autoplay muted onerror="this.remove()"></video>':'';
+  $('#mSteps').innerHTML=it.steps.map(function(s){return '<li>'+esc(s)+'</li>'}).join('');
+  var L=link(it);$('#mActs').innerHTML=(L?'<a class="btn pri" target="_top" href="'+L+'">Open ›</a>':'')+'<button class="btn" type="button" data-done="'+id+'">Mark done</button>';
+  $('#modal').classList.add('on');
+}
+function closeM(){$('#modal').classList.remove('on');var v=$('#mVid video');if(v)v.pause()}
+function toggle(id,on){
+  state[id]=on?Date.now():0;if(!on)delete state[id];save();
+  var g=G();if(g)g.log(on?'CHECK':'UNCHECK',{item:id});
+  var r=render();var ph=phaseOf(id);
+  if(on&&ph){var items=ph.items.filter(mine);if(items.every(function(i){return state[i.id]})&&g)g.result('Checklist · '+ph.p,1,true,{track:track})}
+  if(on&&r.tot&&r.dn===r.tot){if(g)g.result('Onboarding to Training Checklist',1,true,{track:track});demo('done')}
+}
+function regRender(){
+  var q=($('#q').value||'').toLowerCase(),cat=($('#catChips .on')||{}).dataset;cat=cat&&cat.c||'All';
+  $('#regBody').innerHTML=SITES.filter(function(s){return (cat==='All'||s.c===cat)&&(!q||(s.n+s.id+s.w+s.a).toLowerCase().indexOf(q)>-1)}).map(function(s){
+    var open=s.f.indexOf('(')<0?'<a class="btn pri" target="_top" href="'+LB+s.f+(s.f?'/':'')+'">Open</a>':'';
+    return '<tr><td><b>'+esc(s.n)+'</b><br><code>'+esc(s.id)+'</code></td><td>'+esc(s.a)+'</td><td>'+esc(s.w)+'</td><td><div class="acts" style="margin:0">'+open+'<button class="btn" type="button" data-access="'+esc(s.id)+'">Request access</button></div></td></tr>'}).join('');
+}
+function chips(){
+  $('#trackChips').innerHTML=['all','tech','rep','dealer','coord','cs','exec'].map(function(t){return '<button class="chip'+(t===track?' on':'')+'" type="button" data-track="'+t+'">'+TRACK_NAMES[t]+'</button>'}).join('');
+  var cats=['All'];SITES.forEach(function(s){if(cats.indexOf(s.c)<0)cats.push(s.c)});
+  $('#catChips').innerHTML=cats.map(function(c,i){return '<button class="chip'+(i?'':' on')+'" type="button" data-c="'+c+'">'+c+'</button>'}).join('');
+}
+function start(u){
+  user=u||null;KEY='ssu.start.'+(u&&u.email||'anon');load();
+  var r=String(u&&u.role||'').toLowerCase();track=ROLE_TRACK[r]||'all';
+  $('#who').textContent=(u?u.email+' · '+(u.role||'')+' · ':'')+'Your track: '+TRACK_NAMES[track];
+  chips();render();regRender();
+}
+d.addEventListener('click',function(e){
+  var t=e.target.closest('button,a');if(!t)return;
+  if(t.dataset.tab){d.querySelectorAll('.tabs button').forEach(function(b){b.setAttribute('aria-selected',b===t)});['list','reg','how'].forEach(function(x){$('#'+x).classList.toggle('hidden',x!==t.dataset.tab)})}
+  if(t.dataset.track){track=t.dataset.track;chips();render()}
+  if(t.dataset.c){d.querySelectorAll('#catChips .chip').forEach(function(b){b.classList.toggle('on',b===t)});regRender()}
+  if(t.dataset.demo)demo(t.dataset.demo);
+  if(t.dataset.done){toggle(t.dataset.done,true);if(t.dataset.done!=='done')closeM()}
+  if(t.dataset.req){var g=G();if(g)g.request('Trainer sign-off: '+find(t.dataset.req).t);t.textContent='Requested ✓';t.disabled=true}
+  if(t.dataset.access){var g2=G();if(g2)g2.request('Site access: '+t.dataset.access);t.textContent='Requested ✓';t.disabled=true}
+  if(t.classList.contains('tipb')){var w=t.parentElement,was=w.classList.contains('open');d.querySelectorAll('.tipw.open').forEach(function(x){x.classList.remove('open')});if(!was)w.classList.add('open')}
+  else if(!t.closest('.tipw'))d.querySelectorAll('.tipw.open').forEach(function(x){x.classList.remove('open')});
+});
+d.addEventListener('change',function(e){if(e.target.dataset.id)toggle(e.target.dataset.id,e.target.checked)});
+$('#mClose').onclick=closeM;$('#modal').addEventListener('click',function(e){if(e.target.id==='modal')closeM()});
+d.addEventListener('keydown',function(e){if(e.key==='Escape')closeM()});
+$('#q').addEventListener('input',regRender);
+$('#themeBtn').onclick=function(){var r=d.documentElement,cur=r.getAttribute('data-theme');var dark=cur?cur==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.setAttribute('data-theme',dark?'light':'dark');try{localStorage.setItem('ssu.theme',r.getAttribute('data-theme'))}catch(e){}};
+try{var th=localStorage.getItem('ssu.theme');if(th)d.documentElement.setAttribute('data-theme',th)}catch(e){}
+if(window.SSUGate){SSUGate.onReady(start)}else{start(null)}
+</script>
+</body>
+</html>
